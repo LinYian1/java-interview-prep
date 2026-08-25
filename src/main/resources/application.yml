@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: interview-prep
+  datasource:
+    url: jdbc:sqlite:./data/interview.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  jackson:
+    default-property-inclusion: non_null
+
+app:
+  source-md: D:/DEVELOP/doc/必备Java面试题.md
+  ingest-on-startup: true
+
+logging:
+  level:
+    com.interview.prep: info

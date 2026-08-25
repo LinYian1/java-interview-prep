@@ -1,0 +1,20 @@
+# ---- 构建产物 ----
+build/
+.gradle/
+
+# ---- 前端依赖 ----
+frontend/node_modules/
+
+# ---- 运行时数据 ----
+# 数据库存有 AI API Key 与个人掌握度数据；日志可能包含敏感信息，一律不入库
+data/
+
+# ---- 本机环境 ----
+# JDK 路径因机器而异，克隆后按 README「从源码构建」自行创建
+gradle.properties
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.claude/
