@@ -12,6 +12,7 @@ const apiKeyInput = ref('')
 const apiKeyMasked = ref('')
 const apiKeySet = ref(false)
 const rateMs = ref(600)
+const concurrency = ref(3)
 const testResult = ref(null) // {ok, message}
 const saving = ref(false)
 
@@ -43,6 +44,7 @@ async function loadSettings() {
   model.value = s.model || ''
   proxy.value = s.proxy || ''
   rateMs.value = s.rateMs ?? 600
+  concurrency.value = s.concurrency ?? 3
   apiKeyMasked.value = s.apiKeyMasked || ''
   apiKeySet.value = !!s.apiKeySet
 }
@@ -50,7 +52,13 @@ async function loadSettings() {
 async function save() {
   saving.value = true
   try {
-    const body = { baseUrl: baseUrl.value, model: model.value, proxy: proxy.value.trim(), rateMs: rateMs.value }
+    const body = {
+      baseUrl: baseUrl.value,
+      model: model.value,
+      proxy: proxy.value.trim(),
+      rateMs: rateMs.value,
+      concurrency: Math.min(Math.max(Number(concurrency.value) || 3, 1), 10)
+    }
     if (apiKeyInput.value.trim()) body.apiKey = apiKeyInput.value.trim()
     await api.put('/api/settings', body)
     apiKeyInput.value = ''
@@ -222,6 +230,17 @@ watch(logQ, () => {
           <label class="checkbox-line"><input v-model="scope" type="radio" value="both" />两者都要</label>
           <label class="checkbox-line"><input v-model="force" type="checkbox" />强制重新生成全部</label>
         </div>
+        <div class="form-row radio-line">
+          <label class="checkbox-line">并发数
+            <input v-model.number="concurrency" type="number" min="1" max="10" style="width: 70px; margin-left: 6px" />
+          </label>
+          <label class="checkbox-line">请求间隔 (ms)
+            <input v-model.number="rateMs" type="number" min="0" step="100" style="width: 90px; margin-left: 6px" />
+          </label>
+        </div>
+        <p class="hint" style="margin-top: -8px; margin-bottom: 12px">
+          并行不影响生成质量（每题相互独立），但并发越高对网关压力越大；遇到限流会自动退避重试。默认并发 3，全库约提速 3 倍。
+        </p>
         <div style="display: flex; gap: 10px">
           <button class="btn primary" @click="startBatch">开始生成</button>
           <button v-if="job && job.running" class="btn" @click="stopBatch">停止</button>

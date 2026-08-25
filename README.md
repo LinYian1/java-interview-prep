@@ -117,6 +117,8 @@ java -jar interview-prep.jar --app.source-md=D:/path/to/你的题库.md --spring
 | Base URL | OpenAI 兼容网关地址，如 `https://api.deepseek.com/v1` |
 | 模型 | 如 `deepseek-chat`。**务必选响应快的模型**，慢模型长输出会被网关超时掐断 |
 | HTTP 代理 | 可选，如 `http://127.0.0.1:7890`，留空直连 |
+| 并发数 | 批处理并行请求数（1~10，默认 3）。并行不影响质量；网关限流时自动退避重试 |
+| 请求间隔 | 相邻请求起始的最小间隔毫秒数，配合并发数控制总压力 |
 | API Key | 保存后脱敏显示；留空提交表示保持不变，「清除 Key」按钮可删除 |
 
 不配置 AI 时所有基础功能照常可用（规则引擎兜底）。

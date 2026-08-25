@@ -107,6 +107,7 @@ public class GenerateController {
         resp.put("model", all.get(SettingsDao.AI_MODEL));
         resp.put("proxy", all.get(SettingsDao.AI_PROXY));
         resp.put("rateMs", settingsDao.getInt(SettingsDao.AI_RATE_MS, 600));
+        resp.put("concurrency", settingsDao.getInt(SettingsDao.AI_CONCURRENCY, 3));
         resp.put("apiKeyMasked", mask(key));
         resp.put("apiKeySet", key != null && !key.isBlank());
         return resp;

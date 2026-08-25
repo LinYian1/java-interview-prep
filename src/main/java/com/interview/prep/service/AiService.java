@@ -10,6 +10,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,6 +132,29 @@ public class AiService {
                 all.get(SettingsDao.AI_MODEL));
     }
 
+    /** 批处理并发数，范围 1~10，默认 3 */
+    private int concurrency() {
+        return Math.max(1, Math.min(settingsDao.getInt(SettingsDao.AI_CONCURRENCY, 3), 10));
+    }
+
+    /** 全局节流：并发下同样保证相邻请求的起始间隔不小于 rateMs */
+    private static final class Throttle {
+        private final long minInterval;
+        private long last;
+
+        Throttle(long minInterval) {
+            this.minInterval = minInterval;
+        }
+
+        synchronized void waitTurn() throws InterruptedException {
+            long wait = last + minInterval - System.currentTimeMillis();
+            if (wait > 0) {
+                Thread.sleep(wait);
+            }
+            last = System.currentTimeMillis();
+        }
+    }
+
     public record TestResult(boolean ok, String message) {}
 
     public TestResult test() {
@@ -242,7 +270,9 @@ public class AiService {
             log.warn("AI 调用失败（第 {}/{} 次），稍后重试: {}", attempt, maxAttempts,
                     last == null ? "" : last.getMessage());
             if (attempt < maxAttempts) {
-                Thread.sleep(2500L * attempt);
+                boolean throttled = last != null
+                        && String.valueOf(last.getMessage()).contains("HTTP 429");
+                Thread.sleep(throttled ? 8000L * attempt : 2500L * attempt); // 网关限流时退避更久
             }
         }
         if (last instanceof BizException b) {
@@ -321,33 +351,61 @@ public class AiService {
             throw BizException.bad("没有需要生成的题目（如需重新生成全部请勾选强制模式）");
         }
 
-        String type = "AI-" + scope + (questionId != null ? ":" + questionId : "");
+        String type = "AI-" + scope + (questionId != null ? ":" + questionId : "")
+                + " x" + concurrency();
         boolean started = jobs.tryStart(type, total, control -> {
             int rateMs = settingsDao.getInt(SettingsDao.AI_RATE_MS, 600);
-            int done = 0;
-            int failed = 0;
-            String lastError = null;
-            for (String id : targets) {
-                if (control.stopped()) {
-                    break;
+            int workers = concurrency();
+            Throttle throttle = new Throttle(rateMs);
+            AtomicInteger done = new AtomicInteger();
+            AtomicInteger failed = new AtomicInteger();
+            AtomicReference<String> lastError = new AtomicReference<>();
+
+            // 每道题一个任务，线程池大小即并发数；stop 后未开始的任务直接跳过
+            ExecutorService pool = Executors.newFixedThreadPool(workers, r -> {
+                Thread t = new Thread(r, "ai-worker");
+                t.setDaemon(true);
+                return t;
+            });
+            try {
+                List<Future<?>> futures = new ArrayList<>();
+                for (String id : targets) {
+                    futures.add(pool.submit(() -> {
+                        if (control.stopped()) {
+                            return;
+                        }
+                        try {
+                            throttle.waitTurn();
+                            if (control.stopped()) {
+                                return;
+                            }
+                            if (doContent && needsContent(id, force)) {
+                                generateThreePart(id);
+                            }
+                            if (doExtra && (force || genDao.findExtra(id) == null)) {
+                                generateExtra(id);
+                            }
+                            done.incrementAndGet();
+                        } catch (Exception e) {
+                            failed.incrementAndGet();
+                            lastError.set(e.getMessage());
+                            log.warn("AI 生成失败 {}: {}", id, e.getMessage());
+                        }
+                        control.progress(done.get(), failed.get(),
+                                "已完成 " + done.get() + "/" + targets.size()
+                                        + "（并发 " + workers + "）"
+                                        + (lastError.get() != null ? "，最近错误：" + abbrev(lastError.get()) : ""));
+                    }));
                 }
-                try {
-                    if (doContent && needsContent(id, force)) {
-                        generateThreePart(id);
-                    }
-                    if (doExtra && (force || genDao.findExtra(id) == null)) {
-                        generateExtra(id);
-                    }
-                    done++;
-                } catch (Exception e) {
-                    failed++;
-                    lastError = e.getMessage();
-                    log.warn("AI 生成失败 {}: {}", id, lastError);
+                for (Future<?> f : futures) {
+                    f.get(); // 等全部任务结束（含失败），stop 由任务内部短路
                 }
-                control.progress(done, failed,
-                        "已完成 " + done + "/" + targets.size()
-                                + (lastError != null ? "，最近错误：" + abbrev(lastError) : ""));
-                Thread.sleep(rateMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                pool.shutdownNow();
             }
         });
         if (!started) {

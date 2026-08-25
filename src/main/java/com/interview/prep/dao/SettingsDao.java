@@ -14,6 +14,7 @@ public class SettingsDao {
     public static final String AI_MODEL = "ai_model";
     public static final String AI_RATE_MS = "ai_rate_ms";
     public static final String AI_PROXY = "ai_proxy";
+    public static final String AI_CONCURRENCY = "ai_concurrency";
 
     private final JdbcTemplate jdbc;
 

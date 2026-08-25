@@ -185,6 +185,7 @@ curl -X POST http://localhost:8080/api/generate/rule \
   "model": "deepseek-v4-flash",
   "proxy": "http://127.0.0.1:7890",
   "rateMs": 600,
+  "concurrency": 3,
   "apiKeyMasked": "sk-••••rUqU",
   "apiKeySet": true
 }
@@ -195,7 +196,8 @@ curl -X POST http://localhost:8080/api/generate/rule \
 | Body 字段 | 说明 |
 |---|---|
 | `baseUrl` / `model` / `proxy` | 直接覆盖；`proxy` 为空字符串表示清除代理（直连） |
-| `rateMs` | 批处理每题间隔毫秒数，最小 0 |
+| `rateMs` | 相邻请求起始最小间隔毫秒数，最小 0（并发下全局生效） |
+| `concurrency` | 批处理并发数 1~10，默认 3；并行不影响单题质量，过高可能触发网关限流 |
 | `apiKey` | 特殊语义：**缺省 = 保留原值；空字符串 = 清除；其他值 = 覆盖** |
 
 ```bash
