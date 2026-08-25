@@ -1,8 +1,17 @@
 # 八股自习室 · Java 面试背诵工作台
 
+![JDK](https://img.shields.io/badge/JDK-17+-44739E?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-6DB33F?logo=springboot&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-嵌入式-003B57?logo=sqlite&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-F5A623)
+
 本地运行的单机 Web 应用，用于背诵 Java 面试八股文。以本地 Markdown 题库为唯一数据源，
 对每道题生成「是什么 / 为什么 / 怎么做」三段式答题框架，提供全文搜索、库内关联推荐、
 抽题自测与掌握度管理；可选接入任意 OpenAI 兼容大模型接口增强生成质量。
+
+> **下载即用**：无需构建，到 [Releases](https://github.com/LinYian1/java-interview-prep/releases)
+> 下载 `interview-prep.jar`，`java -jar interview-prep.jar` 一键启动（需自备一个 Markdown 格式的题库文件）。
 
 ## 功能特性
 
