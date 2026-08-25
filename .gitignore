@@ -18,3 +18,6 @@ gradle.properties
 *.iml
 .vscode/
 .claude/
+
+# ---- 本地文档/宣传素材（不入库）----
+docs/
